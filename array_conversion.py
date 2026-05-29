@@ -62,7 +62,7 @@ def countMinimumOperations(arr):
         swaps = 0 # This is the running total of minimum swaps needed (we update as we go through the for-loop)
         
         for i in range(n): # Loop through every index of the list
-            #
+            #v
             if visited[i] or current_arr[i] == i+1: # If we already visited this index, or it's in the right position (e.g at index 2 we want the number to be 3)
                 continue # We can continue to the next one in that case
             cycle_length = 0 # This is used for measuring the length of a single cycle
