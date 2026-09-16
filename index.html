@@ -56,7 +56,12 @@ fetch("image_widths_heights.json").then(f => {
     let i = 0;
     // this could be a for loop, but i thought it would be fun to have them appear gradually.
     let interval = setInterval(() => {
-        let height = 600;
+        // Start each image's search window with a randomised amount of room, instead of a fixed
+        // small band (e.g. 600). A fixed small starting height meant only small/narrow images
+        // could find a free spot early on, so they'd disproportionately end up bunched near the
+        // top on every load. Randomising this per image (independent of that image's own shape)
+        // means big and small images compete for space near the top equally often.
+        let height = 900 + Math.floor(Math.random() * 1400);
         let [w, h] = pairs[i];
         while (1) {
             let found_place = false;
