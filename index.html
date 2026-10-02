@@ -1,7 +1,7 @@
 <html>
     <title>screenshots</title>
     <p style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
-    <div id="container">
+    <div id="container" style="position: relative;">
     </div>
     <script>
 
@@ -23,6 +23,11 @@ fetch("image_widths_heights.json").then(f => {
 
     const rect = container.getBoundingClientRect();
     let screen_width = rect.width;
+    // Container's own offset from the page origin, so text-node positions (measured in page
+    // coordinates below) can be converted into coordinates relative to the container -- which
+    // is what image positions are placed in now that #container is position:relative.
+    const container_page_top = rect.top + window.pageYOffset;
+    const container_page_left = rect.left + window.pageXOffset;
 
     // By default I will have a lot of images that are just enormous and take up most of the screen. Here I attempt
     // to resize the images to be approximately a similar size.
@@ -54,6 +59,15 @@ fetch("image_widths_heights.json").then(f => {
     // height by 50.
     let positions = [];
     let i = 0;
+    let max_bottom = 0;
+    // Randomised once per page load: how much every image's placement window gets pushed
+    // down/stretched this time round. At 0 the top stays as tightly packed as before; higher
+    // values mean this particular load tends to leave the top sparser with images pushed
+    // further down the page. Varying it per load (rather than per image) is what makes some
+    // loads "spread out starting near the top" and others "mostly bunched lower down", instead
+    // of every load converging on the same average layout.
+    const load_push_down = Math.random() * 2500;
+    const load_stretch = 0.6 + Math.random() * 1.2;
     // this could be a for loop, but i thought it would be fun to have them appear gradually.
     let interval = setInterval(() => {
         // Start each image's search window with a randomised amount of room, instead of a fixed
@@ -61,15 +75,16 @@ fetch("image_widths_heights.json").then(f => {
         // could find a free spot early on, so they'd disproportionately end up bunched near the
         // top on every load. Randomising this per image (independent of that image's own shape)
         // means big and small images compete for space near the top equally often.
-        let height = 900 + Math.floor(Math.random() * 1400);
+        let height = (900 + Math.floor(Math.random() * 1400)) * load_stretch;
         let [w, h] = pairs[i];
         while (1) {
             let found_place = false;
             let w_max = screen_width-w;
-            let h_max = height-h;
+            let h_min = load_push_down;
+            let h_max = load_push_down+height-h;
             for (let _ = 0; _ < 50; _++) {
                 let a_left = Math.random() * w_max;
-                let a_top = Math.random() * h_max;
+                let a_top = h_min + Math.random() * (h_max-h_min);
                 let a_right = a_left+w;
                 let a_bottom = a_top+h;
 
@@ -90,8 +105,8 @@ fetch("image_widths_heights.json").then(f => {
                     const range = document.createRange();
                     range.selectNodeContents(node);
                     const rect = range.getBoundingClientRect();
-                    let node_top = rect.top + window.pageYOffset;
-                    let node_left = rect.left + window.pageXOffset;
+                    let node_top = rect.top + window.pageYOffset - container_page_top;
+                    let node_left = rect.left + window.pageXOffset - container_page_left;
                     
                     if (a_left < (node_left+rect.width) && a_right > node_left && a_bottom > node_top && a_top < (node_top+rect.height)) {
                         intersects = true;
@@ -124,6 +139,16 @@ fetch("image_widths_heights.json").then(f => {
         img.style.left = positions[i][0];
         img.loading = "lazy";
         container.appendChild(img);
+
+        // #container has no content in normal flow (everything inside it is absolutely
+        // positioned), so without this its height stays 0 and the page never lays out /
+        // loads images below the fold correctly, especially on mobile browsers opened
+        // fresh from a link. Keep it grown to fit everything placed so far.
+        const bottom = positions[i][1] + pairs[i][1];
+        if (bottom > max_bottom) {
+            max_bottom = bottom;
+            container.style.minHeight = max_bottom + "px";
+        }
 
         i++;
         if (i == key_values.length) {
