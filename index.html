@@ -60,14 +60,6 @@ fetch("image_widths_heights.json").then(f => {
     let positions = [];
     let i = 0;
     let max_bottom = 0;
-    // Randomised once per page load: how much every image's placement window gets pushed
-    // down/stretched this time round. At 0 the top stays as tightly packed as before; higher
-    // values mean this particular load tends to leave the top sparser with images pushed
-    // further down the page. Varying it per load (rather than per image) is what makes some
-    // loads "spread out starting near the top" and others "mostly bunched lower down", instead
-    // of every load converging on the same average layout.
-    const load_push_down = Math.random() * 2500;
-    const load_stretch = 0.6 + Math.random() * 1.2;
     // this could be a for loop, but i thought it would be fun to have them appear gradually.
     let interval = setInterval(() => {
         // Start each image's search window with a randomised amount of room, instead of a fixed
@@ -75,16 +67,15 @@ fetch("image_widths_heights.json").then(f => {
         // could find a free spot early on, so they'd disproportionately end up bunched near the
         // top on every load. Randomising this per image (independent of that image's own shape)
         // means big and small images compete for space near the top equally often.
-        let height = (900 + Math.floor(Math.random() * 1400)) * load_stretch;
+        let height = 900 + Math.floor(Math.random() * 1400);
         let [w, h] = pairs[i];
         while (1) {
             let found_place = false;
             let w_max = screen_width-w;
-            let h_min = load_push_down;
-            let h_max = load_push_down+height-h;
+            let h_max = height-h;
             for (let _ = 0; _ < 50; _++) {
                 let a_left = Math.random() * w_max;
-                let a_top = h_min + Math.random() * (h_max-h_min);
+                let a_top = Math.random() * h_max;
                 let a_right = a_left+w;
                 let a_bottom = a_top+h;
 
@@ -154,7 +145,7 @@ fetch("image_widths_heights.json").then(f => {
         if (i == key_values.length) {
             clearInterval(interval);
         }
-    }, 100);
+    }, 5);
 })
     </script>
 </html>
