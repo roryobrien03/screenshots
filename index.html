@@ -1,6 +1,6 @@
 <html>
     <title>screenshots</title>
-    <p id="caption" style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
+    <p style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
     <div id="container" style="position: relative;">
     </div>
     <script>
@@ -29,13 +29,6 @@ fetch("image_widths_heights.json").then(f => {
     const container_page_top = rect.top + window.pageYOffset;
     const container_page_left = rect.left + window.pageXOffset;
 
-    // Where the caption block ends, in container-relative coordinates -- used below to
-    // deliberately try placing a few early images in the gap to the right of the caption
-    // (top right), rather than leaving that spot to pure chance.
-    const caption_rect = document.getElementById("caption").getBoundingClientRect();
-    const caption_right = caption_rect.right + window.pageXOffset - container_page_left;
-    const caption_bottom = caption_rect.bottom + window.pageYOffset - container_page_top;
-
     // By default I will have a lot of images that are just enormous and take up most of the screen. Here I attempt
     // to resize the images to be approximately a similar size.
     // To adjust image size, change goal_pixels here.
@@ -59,6 +52,21 @@ fetch("image_widths_heights.json").then(f => {
         { acceptNode: (node) => node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }
     );
     while(treeWalker.nextNode()) textNodes.push(treeWalker.currentNode);
+
+    // How far right and how far down the caption's actual rendered text reaches, in
+    // container-relative coordinates -- used below to deliberately try placing a few early
+    // images in the gap beside the caption (top right), rather than leaving that spot to pure
+    // chance. Measured from the text nodes' own rects (not the <p>'s box, which spans the full
+    // container width as a block element regardless of how short the text inside it is).
+    let caption_right = 0;
+    let caption_bottom = 0;
+    for (const node of textNodes) {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const r = range.getBoundingClientRect();
+        caption_right = Math.max(caption_right, r.right + window.pageXOffset - container_page_left);
+        caption_bottom = Math.max(caption_bottom, r.bottom + window.pageYOffset - container_page_top);
+    }
 
     // Now we attempt to place images. I looked at some actually good algorithms but decided to instead use a stupid
     // algorithm: for each image, attempt to place it in a random location up to height 600. if it intersects with
