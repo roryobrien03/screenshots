@@ -1,6 +1,6 @@
 <html>
     <title>screenshots</title>
-    <p style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
+    <p id="caption" style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
     <div id="container" style="position: relative;">
     </div>
     <script>
@@ -28,6 +28,13 @@ fetch("image_widths_heights.json").then(f => {
     // is what image positions are placed in now that #container is position:relative.
     const container_page_top = rect.top + window.pageYOffset;
     const container_page_left = rect.left + window.pageXOffset;
+
+    // Where the caption block ends, in container-relative coordinates -- used below to
+    // deliberately try placing a few early images in the gap to the right of the caption
+    // (top right), rather than leaving that spot to pure chance.
+    const caption_rect = document.getElementById("caption").getBoundingClientRect();
+    const caption_right = caption_rect.right + window.pageXOffset - container_page_left;
+    const caption_bottom = caption_rect.bottom + window.pageYOffset - container_page_top;
 
     // By default I will have a lot of images that are just enormous and take up most of the screen. Here I attempt
     // to resize the images to be approximately a similar size.
@@ -78,6 +85,36 @@ fetch("image_widths_heights.json").then(f => {
             let found_place = false;
             let w_max = screen_width-w;
             let h_max = height-h;
+            // For the first few images, try a handful of spots in the gap to the right of the
+            // caption (top right) before falling back to the normal fully-random search below.
+            // Without this, that gap is only ever filled by chance -- usually too rarely to
+            // notice -- since it competes with every other spot on the page for a random hit.
+            const room_beside_caption = screen_width - caption_right;
+            const try_top_right = i < 6 && room_beside_caption > w;
+            const attempts = try_top_right ? 10 : 0;
+            for (let _ = 0; _ < attempts; _++) {
+                let a_left = caption_right + Math.random() * (room_beside_caption - w);
+                let a_top = Math.random() * Math.max(1, caption_bottom - h);
+                let a_right = a_left+w;
+                let a_bottom = a_top+h;
+
+                let intersects = false;
+                for (let j = 0; j < positions.length; j++) {
+                    let [b_left, b_top] = positions[j];
+                    let b_right = b_left + pairs[j][0];
+                    let b_bottom = b_top + pairs[j][1];
+                    if (a_left < b_right && a_right > b_left && a_bottom > b_top && a_top < b_bottom) {
+                        intersects = true;
+                        break;
+                    }
+                }
+                if (!intersects) {
+                    found_place = true;
+                    positions.push([parseInt(a_left), parseInt(a_top)]);
+                    break;
+                }
+            }
+            if (found_place) break;
             for (let _ = 0; _ < 50; _++) {
                 let a_left = Math.random() * w_max;
                 let a_top = Math.random() * h_max;
