@@ -1,7 +1,7 @@
 <html>
     <title>screenshots</title>
-    <p style="color: blue; font-size: 1.4em;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
     <div id="container" style="position: relative;">
+    <p style="color: blue; font-size: 1.4em; margin: 0;">randomised collection of quotes, lyrics, memes, and other bits.<br>zoom and hold to see images more clearly.<br>refresh and keep scrolling for more.<br>better on desktop.<br>continuous work in progress.<br>ig: <a href="https://instagram.com/roryobrien03" target="_blank">@roryobrien03</a></p>
     </div>
     <script>
 
@@ -60,7 +60,15 @@ fetch("image_widths_heights.json").then(f => {
     // below). Even when the caption's longest line doesn't span the full width (e.g. it only
     // reaches 3/4 of the way across on a narrow phone), there's real usable space beside the
     // whole block, not just beside individual short lines.
-    let caption_right = 0, caption_bottom = 0;
+    // The caption <p> sits above #container with its own margin in between, so its text's
+    // bottom edge is at a NEGATIVE container-relative y (it's above the container's own origin).
+    // Seeding the accumulator at 0 and only ever taking a Math.max of it silently threw that
+    // away every time (max(0, negative) is always 0), leaving caption_bottom permanently stuck
+    // at 0 and the whole gap-beside-the-caption feature inert -- this is why nothing was ever
+    // appearing there regardless of width/area logic changes. Track the real (possibly negative)
+    // value and only clamp it to 0 once, at the end, since images can't be placed above y=0
+    // anyway.
+    let caption_right = -Infinity, caption_bottom = -Infinity;
     for (const node of textNodes) {
         const range = document.createRange();
         range.selectNodeContents(node);
@@ -68,6 +76,8 @@ fetch("image_widths_heights.json").then(f => {
         caption_right = Math.max(caption_right, r.right + window.pageXOffset - container_page_left);
         caption_bottom = Math.max(caption_bottom, r.bottom + window.pageYOffset - container_page_top);
     }
+    caption_right = Math.max(0, caption_right);
+    caption_bottom = Math.max(0, caption_bottom);
 
     // Now we attempt to place images. I looked at some actually good algorithms but decided to instead use a stupid
     // algorithm: for each image, attempt to place it in a random location up to height 600. if it intersects with
