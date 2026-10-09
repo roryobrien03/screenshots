@@ -75,8 +75,30 @@ fetch("image_widths_heights.json").then(f => {
     let positions = [];
     let i = 0;
     let max_bottom = 0;
+
+    // Deterministically claim the gap beside the caption (top right) with the first image
+    // (in shuffle order) that's small enough to fit there, instead of leaving it to a random
+    // search that can come up empty. room_beside_caption/room_below_caption give that image's
+    // max size; the loop just needs to find which shuffled image qualifies.
+    const room_beside_caption = screen_width - caption_right;
+    let top_right_index = -1;
+    for (let k = 0; k < Math.min(30, pairs.length); k++) {
+        const [pw, ph] = pairs[k];
+        if (pw < room_beside_caption && ph < caption_bottom) {
+            top_right_index = k;
+            break;
+        }
+    }
+    if (top_right_index !== -1) {
+        const [pw, ph] = pairs[top_right_index];
+        positions[top_right_index] = [parseInt(caption_right + 10), parseInt(Math.max(0, caption_bottom - ph))];
+    }
+
     // this could be a for loop, but i thought it would be fun to have them appear gradually.
     let interval = setInterval(() => {
+        if (i === top_right_index) {
+            // Already placed above -- just create the element below and move on.
+        } else {
         // Start each image's search window with a randomised amount of room, instead of a fixed
         // small band (e.g. 600). A fixed small starting height meant only small/narrow images
         // could find a free spot early on, so they'd disproportionately end up bunched near the
@@ -93,45 +115,17 @@ fetch("image_widths_heights.json").then(f => {
             let found_place = false;
             let w_max = screen_width-w;
             let h_max = height-h;
-            // For the first few images, try a handful of spots in the gap to the right of the
-            // caption (top right) before falling back to the normal fully-random search below.
-            // Without this, that gap is only ever filled by chance -- usually too rarely to
-            // notice -- since it competes with every other spot on the page for a random hit.
-            const room_beside_caption = screen_width - caption_right;
-            const try_top_right = i < 6 && room_beside_caption > w;
-            const attempts = try_top_right ? 10 : 0;
-            for (let _ = 0; _ < attempts; _++) {
-                let a_left = caption_right + Math.random() * (room_beside_caption - w);
-                let a_top = Math.random() * Math.max(1, caption_bottom - h);
-                let a_right = a_left+w;
-                let a_bottom = a_top+h;
-
-                let intersects = false;
-                for (let j = 0; j < positions.length; j++) {
-                    let [b_left, b_top] = positions[j];
-                    let b_right = b_left + pairs[j][0];
-                    let b_bottom = b_top + pairs[j][1];
-                    if (a_left < b_right && a_right > b_left && a_bottom > b_top && a_top < b_bottom) {
-                        intersects = true;
-                        break;
-                    }
-                }
-                if (!intersects) {
-                    found_place = true;
-                    positions.push([parseInt(a_left), parseInt(a_top)]);
-                    break;
-                }
-            }
-            if (found_place) break;
             for (let _ = 0; _ < 50; _++) {
                 let a_left = Math.random() * w_max;
                 let a_top = Math.random() * h_max;
                 let a_right = a_left+w;
                 let a_bottom = a_top+h;
 
-                // do intersection checks against images
+                // do intersection checks against images (skip indices not placed yet -- the
+                // top-right slot above is pre-filled out of order, so positions can be sparse)
                 let intersects = false;
                 for (let j = 0; j < positions.length; j++) {
+                    if (!positions[j]) continue;
                     let [b_left, b_top] = positions[j];
                     let b_right = b_left + pairs[j][0];
                     let b_bottom = b_top + pairs[j][1];
@@ -157,7 +151,7 @@ fetch("image_widths_heights.json").then(f => {
 
                 if (!intersects) {
                     found_place = true;
-                    positions.push([parseInt(a_left), parseInt(a_top)]);
+                    positions[i] = [parseInt(a_left), parseInt(a_top)];
                     break;
                 }
             }
@@ -166,6 +160,7 @@ fetch("image_widths_heights.json").then(f => {
             } else {
                 height += 50;
             }
+        }
         }
 
         // Create the image
